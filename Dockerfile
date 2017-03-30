@@ -1,20 +1,25 @@
-FROM nimmis/alpine-golang:1.6.3
+FROM google/cloud-sdk
 
-RUN apk update && apk add wget bash python python-dev unzip git && rm -rf /var/cache/apk/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        curl \
+        git \
+		g++ \
+		gcc \
+		libc6-dev \
+		make \
+	&& rm -rf /var/lib/apt/lists/*
 
-# Install the Google Cloud SDK.
-ENV HOME /
-ENV CLOUDSDK_PYTHON_SITEPACKAGES 1
+ENV GOLANG_VERSION 1.6.3
+ENV GOLANG_DOWNLOAD_URL https://golang.org/dl/go$GOLANG_VERSION.linux-amd64.tar.gz
+ENV GOLANG_DOWNLOAD_SHA256 cdde5e08530c0579255d6153b08fdb3b8e47caabbe717bc7bcd7561275a87aeb
 
-# Download and install the cloud sdk
-RUN wget https://dl.google.com/dl/cloudsdk/channels/rapid/google-cloud-sdk.zip && unzip google-cloud-sdk.zip && rm google-cloud-sdk.zip
-RUN ./google-cloud-sdk/install.sh --usage-reporting=true --path-update=true --bash-completion=true --rc-path=/.bashrc --additional-components app-engine-python app-engine-go app cloud-datastore-emulator
+RUN curl -fsSL "$GOLANG_DOWNLOAD_URL" -o golang.tar.gz \
+	&& echo "$GOLANG_DOWNLOAD_SHA256  golang.tar.gz" | sha256sum -c - \
+	&& tar -C /usr/local -xzf golang.tar.gz \
+	&& rm golang.tar.gz
 
-# Disable updater check for the whole installation.
-# Users won't be bugged with notifications to update to the latest version of gcloud.
-RUN google-cloud-sdk/bin/gcloud config set --installation component_manager/disable_update_check true
+ENV GOPATH /go
+ENV PATH $GOPATH/bin:/usr/local/go/bin:$PATH
 
-RUN mkdir /.ssh
-ENV PATH /google-cloud-sdk/bin:$PATH
-VOLUME ["/.config"]
-CMD ["/bin/bash"]
+RUN mkdir -p "$GOPATH/src" "$GOPATH/bin" && chmod -R 777 "$GOPATH"
+WORKDIR $GOPATH
